@@ -101,8 +101,15 @@
     const grid = document.getElementById('mainGrid');
     const videoCount = 6;
 
-    // 官方保證可以嵌入的測試影片，用來確認你的環境沒問題
-    const defaultID = "jNQXAC9IVRw"; 
+    // 【修改重點 1】建立一個陣列，放入你指定的 6 個影片 ID
+    const defaultIDs = [
+        "1ksmiy6EsDo", // 影片 1
+        "iCetfeKzJFs", // 影片 2
+        "_k-5U7IeK8g", // 影片 3
+        "YMRVk4EnBXk", // 影片 4
+        "VM18f-IIUTw", // 影片 5
+        "5TklUbUBZss"  // 影片 6
+    ];
 
     // 1. 初始化產生影片框
     for (let i = 0; i < videoCount; i++) {
@@ -112,12 +119,12 @@
         container.style.width = '600px'; 
         container.style.height = '340px';
         
-        // 使用最乾淨的 embed 格式
-        container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/${defaultID}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        // 【修改重點 2】將原本的 defaultID 改成 defaultIDs[i]，這樣迴圈跑的時候就會依序抓取 0~5 的 ID
+        container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/${defaultIDs[i]}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         grid.appendChild(container);
     }
 
-    // 2. 同步縮放尺寸
+    // 2. 同步縮放尺寸 (維持不變)
     function syncSize() {
         const w = document.getElementById('globalW').value;
         const h = document.getElementById('globalH').value;
@@ -130,30 +137,26 @@
         }
     }
 
-    // 3. 【更好的辦法】使用 Regex 完美解析任何 YouTube 網址
+    // 3. 使用 Regex 完美解析任何 YouTube 網址 (維持不變)
     function extractVideoID(url) {
-        // 這串咒語可以辨識所有 watch?v=, youtu.be/, embed/ 等格式
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
         
-        // 如果有抓到，且長度剛好是 YouTube ID 的 11 碼，就回傳 ID
         if (match && match[2].length === 11) {
             return match[2];
         } else {
-            // 如果使用者直接貼上 11 碼的純 ID
             return (url.length === 11) ? url : null;
         }
     }
 
-    // 4. 更換影片
+    // 4. 手動更換影片功能 (維持不變)
     function changeVid(index, url) {
-        if (!url) return; // 空白則不動作
+        if (!url) return; 
         
         const videoId = extractVideoID(url);
 
         if (videoId) {
             const player = document.getElementById(`player-${index}`);
-            // 強制轉換為標準 embed 網址
             player.src = `https://www.youtube.com/embed/${videoId}`;
         } else {
             alert("無法解析此網址，請確認貼上的是正確的 YouTube 連結！");
