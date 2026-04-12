@@ -97,54 +97,68 @@
     <div class="video-grid" id="mainGrid">
         </div>
 
-    <script>
-        const grid = document.getElementById('mainGrid');
-        const videoCount = 6;
+<script>
+    const grid = document.getElementById('mainGrid');
+    const videoCount = 6;
 
-        // 初始化：產生 6 個影片容器
+    // 官方保證可以嵌入的測試影片，用來確認你的環境沒問題
+    const defaultID = "jNQXAC9IVRw"; 
+
+    // 1. 初始化產生影片框
+    for (let i = 0; i < videoCount; i++) {
+        const container = document.createElement('div');
+        container.className = 'video-container';
+        container.id = `box-${i}`;
+        container.style.width = '600px'; 
+        container.style.height = '340px';
+        
+        // 使用最乾淨的 embed 格式
+        container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/${defaultID}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        grid.appendChild(container);
+    }
+
+    // 2. 同步縮放尺寸
+    function syncSize() {
+        const w = document.getElementById('globalW').value;
+        const h = document.getElementById('globalH').value;
         for (let i = 0; i < videoCount; i++) {
-            const container = document.createElement('div');
-            container.className = 'video-container';
-            container.id = `box-${i}`;
-            // 修正：這裡要跟隨你上方 globalW/H 的預設值
-            container.style.width = '600px'; 
-            container.style.height = '340px';
-            
-            // 重要修正：將 watch?v= 改為 embed/
-            container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/1ksmiy6EsDo?enablejsapi=1" allowfullscreen></iframe>`;
-            grid.appendChild(container);
-        }
-
-        // 同步縮放功能 (維持不變)
-        function syncSize() {
-            const w = document.getElementById('globalW').value;
-            const h = document.getElementById('globalH').value;
-            for (let i = 0; i < videoCount; i++) {
-                const box = document.getElementById(`box-${i}`);
-                if (box) {
-                    box.style.width = w + 'px';
-                    box.style.height = h + 'px';
-                }
+            const box = document.getElementById(`box-${i}`);
+            if (box) {
+                box.style.width = w + 'px';
+                box.style.height = h + 'px';
             }
         }
+    }
 
-        // 更換影片功能 (這部分你原本寫的解析邏輯是對的，會自動轉成 embed)
-        function changeVid(index, url) {
-            let videoId = "";
-            if (url.includes("v=")) {
-                videoId = url.split("v=")[1].split("&")[0];
-            } else if (url.includes("youtu.be/")) {
-                videoId = url.split("youtu.be/")[1];
-            } else {
-                videoId = url.trim();
-            }
-
-            if (videoId) {
-                const player = document.getElementById(`player-${index}`);
-                // 確保輸出的 src 是 /embed/ 格式
-                player.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
-            }
+    // 3. 【更好的辦法】使用 Regex 完美解析任何 YouTube 網址
+    function extractVideoID(url) {
+        // 這串咒語可以辨識所有 watch?v=, youtu.be/, embed/ 等格式
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        
+        // 如果有抓到，且長度剛好是 YouTube ID 的 11 碼，就回傳 ID
+        if (match && match[2].length === 11) {
+            return match[2];
+        } else {
+            // 如果使用者直接貼上 11 碼的純 ID
+            return (url.length === 11) ? url : null;
         }
-    </script>
+    }
+
+    // 4. 更換影片
+    function changeVid(index, url) {
+        if (!url) return; // 空白則不動作
+        
+        const videoId = extractVideoID(url);
+
+        if (videoId) {
+            const player = document.getElementById(`player-${index}`);
+            // 強制轉換為標準 embed 網址
+            player.src = `https://www.youtube.com/embed/${videoId}`;
+        } else {
+            alert("無法解析此網址，請確認貼上的是正確的 YouTube 連結！");
+        }
+    }
+</script>
 </body>
 </html>
