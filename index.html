@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6 影片同步尺寸控制器</title>
+    <style>
+        /* CSS 樣式設定 */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #1a1a1a; 
+            color: white; 
+            padding: 20px; 
+            margin: 0;
+        }
+
+        .control-panel {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        h2 { margin-top: 0; color: #ff0000; }
+
+        .size-controls, .url-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .input-group { display: flex; align-items: center; gap: 8px; }
+
+        input {
+            background: #444;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .url-in {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .video-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .video-container {
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <h2>YouTube 多影片同步控制面板</h2>
+        
+        <div class="size-controls">
+            <div class="input-group">
+                <label>同步寬度 (px):</label>
+                <input type="number" id="globalW" value="480" oninput="syncSize()">
+            </div>
+            <div class="input-group">
+                <label>同步高度 (px):</label>
+                <input type="number" id="globalH" value="270" oninput="syncSize()">
+            </div>
+            <span style="font-size: 0.8em; color: #888;">(建議比例 16:9, 如 480x270 或 640x360)</span>
+        </div>
+
+        <div class="url-inputs">
+            <input type="text" class="url-in" placeholder="影片 1 網址或 ID" onchange="changeVid(0, this.value)">
+            <input type="text" class="url-in" placeholder="影片 2 網址或 ID" onchange="changeVid(1, this.value)">
+            <input type="text" class="url-in" placeholder="影片 3 網址或 ID" onchange="changeVid(2, this.value)">
+            <input type="text" class="url-in" placeholder="影片 4 網址或 ID" onchange="changeVid(3, this.value)">
+            <input type="text" class="url-in" placeholder="影片 5 網址或 ID" onchange="changeVid(4, this.value)">
+            <input type="text" class="url-in" placeholder="影片 6 網址或 ID" onchange="changeVid(5, this.value)">
+        </div>
+    </div>
+
+    <div class="video-grid" id="mainGrid">
+        </div>
+
+    <script>
+        const grid = document.getElementById('mainGrid');
+        const videoCount = 6;
+
+        // 初始化：產生 6 個影片容器
+        for (let i = 0; i < videoCount; i++) {
+            const container = document.createElement('div');
+            container.className = 'video-container';
+            container.id = `box-${i}`;
+            container.style.width = '480px';
+            container.style.height = '270px';
+            // 預設一個測試影片
+            container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1" allowfullscreen></iframe>`;
+            grid.appendChild(container);
+        }
+
+        // 同步縮放功能
+        function syncSize() {
+            const w = document.getElementById('globalW').value;
+            const h = document.getElementById('globalH').value;
+            
+            for (let i = 0; i < videoCount; i++) {
+                const box = document.getElementById(`box-${i}`);
+                if (box) {
+                    box.style.width = w + 'px';
+                    box.style.height = h + 'px';
+                }
+            }
+        }
+
+        // 個別更換影片功能 (支援完整網址、短網址、純 ID)
+        function changeVid(index, url) {
+            let videoId = "";
+            if (url.includes("v=")) {
+                videoId = url.split("v=")[1].split("&")[0];
+            } else if (url.includes("youtu.be/")) {
+                videoId = url.split("youtu.be/")[1];
+            } else {
+                videoId = url.trim();
+            }
+
+            if (videoId) {
+                const player = document.getElementById(`player-${index}`);
+                // 加上 origin 參數可增加在 GitHub 上的相容性
+                player.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
+            }
+        }
+    </script>
+</body>
+</html>
