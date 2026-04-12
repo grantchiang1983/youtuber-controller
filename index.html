@@ -106,18 +106,19 @@
             const container = document.createElement('div');
             container.className = 'video-container';
             container.id = `box-${i}`;
-            container.style.width = '480px';
-            container.style.height = '270px';
-            // 預設一個測試影片
-            container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/watch?v=1ksmiy6EsDo" allowfullscreen></iframe>`;
+            // 修正：這裡要跟隨你上方 globalW/H 的預設值
+            container.style.width = '600px'; 
+            container.style.height = '340px';
+            
+            // 重要修正：將 watch?v= 改為 embed/
+            container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/1ksmiy6EsDo?enablejsapi=1" allowfullscreen></iframe>`;
             grid.appendChild(container);
         }
 
-        // 同步縮放功能
+        // 同步縮放功能 (維持不變)
         function syncSize() {
             const w = document.getElementById('globalW').value;
             const h = document.getElementById('globalH').value;
-            
             for (let i = 0; i < videoCount; i++) {
                 const box = document.getElementById(`box-${i}`);
                 if (box) {
@@ -127,7 +128,7 @@
             }
         }
 
-        // 個別更換影片功能 (支援完整網址、短網址、純 ID)
+        // 更換影片功能 (這部分你原本寫的解析邏輯是對的，會自動轉成 embed)
         function changeVid(index, url) {
             let videoId = "";
             if (url.includes("v=")) {
@@ -140,7 +141,7 @@
 
             if (videoId) {
                 const player = document.getElementById(`player-${index}`);
-                // 加上 origin 參數可增加在 GitHub 上的相容性
+                // 確保輸出的 src 是 /embed/ 格式
                 player.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
             }
         }
