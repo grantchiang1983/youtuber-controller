@@ -23,45 +23,86 @@
             top: 10px;
             z-index: 100;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        h2 { margin-top: 0; color: #ff0000; }
-
-        .size-controls, .url-inputs {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
             gap: 15px;
-            margin-top: 10px;
+        }
+
+        .control-panel h2 { 
+            margin: 0; 
+            color: #ff0000; 
+            font-size: 1.5em;
+        }
+
+        .size-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
         }
 
         .input-group { display: flex; align-items: center; gap: 8px; }
 
-        input {
+        input[type="number"] {
             background: #444;
             border: 1px solid #555;
             color: white;
             padding: 8px;
             border-radius: 4px;
-        }
-
-        .url-in {
-            flex: 1;
-            min-width: 250px;
+            width: 80px;
         }
 
         .video-grid {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
+        }
+
+        .video-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #252525;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s, width 0.2s;
+        }
+
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(255, 0, 0, 0.15);
+            border-color: #444;
+        }
+
+        .url-in-card {
+            width: 100%;
+            box-sizing: border-box;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .url-in-card:focus {
+            outline: none;
+            border-color: #ff0000;
+            background: #2a2a2a;
         }
 
         .video-container {
             background: #000;
-            border: 2px solid #333;
-            border-radius: 8px;
+            border: 1px solid #2d2d2d;
+            border-radius: 6px;
             overflow: hidden;
-            transition: transform 0.2s;
+            transition: height 0.2s;
         }
 
         iframe { width: 100%; height: 100%; border: none; }
@@ -83,25 +124,37 @@
             </div>
             <span style="font-size: 0.8em; color: #888;">(建議比例 16:9, 如 480x270 或 640x360)</span>
         </div>
-
-        <div class="url-inputs">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=1ksmiy6EsDo" onchange="changeVid(0, this.value)">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=iCetfeKzJFs" onchange="changeVid(1, this.value)">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=_k-5U7IeK8g" onchange="changeVid(2, this.value)">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=YMRVk4EnBXk" onchange="changeVid(3, this.value)">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=VM18f-IIUTw" onchange="changeVid(4, this.value)">
-            <input type="text" class="url-in" placeholder="https://www.youtube.com/watch?v=5TklUbUBZss" onchange="changeVid(5, this.value)">
-        </div>
     </div>
 
     <div class="video-grid" id="mainGrid">
-        </div>
+    </div>
 
 <script>
+    // 在最前面加上錯誤捕獲，方便本機偵錯
+    window.onerror = function(message, source, lineno, colno, error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.bottom = '10px';
+        errorDiv.style.left = '10px';
+        errorDiv.style.right = '10px';
+        errorDiv.style.background = 'rgba(255,0,0,0.95)';
+        errorDiv.style.color = 'white';
+        errorDiv.style.padding = '15px';
+        errorDiv.style.borderRadius = '8px';
+        errorDiv.style.zIndex = '99999';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.fontSize = '14px';
+        errorDiv.style.whiteSpace = 'pre-wrap';
+        errorDiv.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+        errorDiv.innerHTML = `<strong>⚠️ 本地 JavaScript 錯誤偵測：</strong><br>${message}<br><br><strong>檔案：</strong>${source}<br><strong>行號：</strong>${lineno} 欄位：${colno}`;
+        document.body.appendChild(errorDiv);
+        return false;
+    };
+
     const grid = document.getElementById('mainGrid');
     const videoCount = 6;
 
-    // 【修改重點 1】建立一個陣列，放入你指定的 6 個影片 ID
+    // 建立一個陣列，放入指定的 6 個影片 ID
     const defaultIDs = [
         "1ksmiy6EsDo", // 影片 1
         "iCetfeKzJFs", // 影片 2
@@ -111,33 +164,61 @@
         "5TklUbUBZss"  // 影片 6
     ];
 
-    // 1. 初始化產生影片框
+    const placeholders = [
+        "https://www.youtube.com/watch?v=1ksmiy6EsDo",
+        "https://www.youtube.com/watch?v=iCetfeKzJFs",
+        "https://www.youtube.com/watch?v=_k-5U7IeK8g",
+        "https://www.youtube.com/watch?v=YMRVk4EnBXk",
+        "https://www.youtube.com/watch?v=VM18f-IIUTw",
+        "https://www.youtube.com/watch?v=5TklUbUBZss"
+    ];
+
+    // 1. 初始化產生影片框與網址列
     for (let i = 0; i < videoCount; i++) {
+        // 建立影片卡片 (包覆網址列與影片框)
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.id = `card-${i}`;
+        card.style.width = '600px'; 
+
+        // 建立專屬網址輸入框
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'url-in-card';
+        input.placeholder = `貼上影片 ${i + 1} 網址... 預設: ${placeholders[i]}`;
+        input.onchange = function() {
+            changeVid(i, this.value);
+        };
+
+        // 建立影片容器
         const container = document.createElement('div');
         container.className = 'video-container';
         container.id = `box-${i}`;
-        container.style.width = '600px'; 
         container.style.height = '340px';
-        
-        // 【修改重點 2】將原本的 defaultID 改成 defaultIDs[i]，這樣迴圈跑的時候就會依序抓取 0~5 的 ID
         container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/${defaultIDs[i]}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-        grid.appendChild(container);
+
+        card.appendChild(input);
+        card.appendChild(container);
+        grid.appendChild(card);
     }
 
-    // 2. 同步縮放尺寸 (維持不變)
+    // 2. 同步縮放尺寸
     function syncSize() {
         const w = document.getElementById('globalW').value;
         const h = document.getElementById('globalH').value;
         for (let i = 0; i < videoCount; i++) {
+            const card = document.getElementById(`card-${i}`);
             const box = document.getElementById(`box-${i}`);
+            if (card) {
+                card.style.width = w + 'px';
+            }
             if (box) {
-                box.style.width = w + 'px';
                 box.style.height = h + 'px';
             }
         }
     }
 
-    // 3. 使用 Regex 完美解析任何 YouTube 網址 (維持不變)
+    // 3. 使用 Regex 解析 YouTube 網址
     function extractVideoID(url) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
@@ -149,7 +230,7 @@
         }
     }
 
-    // 4. 手動更換影片功能 (維持不變)
+    // 4. 手動更換影片功能
     function changeVid(index, url) {
         if (!url) return; 
         
