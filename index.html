@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6 影片同步尺寸控制器</title>
+    <title>多功能網頁與影片同步控制器</title>
     <style>
         /* CSS 樣式設定 */
         body { 
@@ -82,8 +82,14 @@
             border-color: #444;
         }
 
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .url-in-card {
-            width: 100%;
+            flex: 1;
             box-sizing: border-box;
             background: #1a1a1a;
             border: 1px solid #444;
@@ -100,6 +106,24 @@
             background: #2a2a2a;
         }
 
+        .open-link-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #ddd;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .open-link-btn:hover {
+            background: #ff0000;
+            color: white;
+            border-color: #ff0000;
+        }
+
         .video-container {
             background: #000;
             border: 1px solid #2d2d2d;
@@ -114,7 +138,7 @@
 <body>
 
     <div class="control-panel">
-        <h2>YouTube 多影片同步控制面板</h2>
+        <h2>多功能網頁與影片同步控制面板</h2>
         
         <div class="size-controls">
             <div class="input-group">
@@ -160,50 +184,56 @@
     const grid = document.getElementById('mainGrid');
     const videoCount = 6;
 
-    // 建立一個陣列，放入指定的 6 個影片 ID
-    const defaultIDs = [
-        "1ksmiy6EsDo", // 影片 1
-        "iCetfeKzJFs", // 影片 2
-        "_k-5U7IeK8g", // 影片 3
-        "YMRVk4EnBXk", // 影片 4
-        "VM18f-IIUTw", // 影片 5
-        "5TklUbUBZss"  // 影片 6
-    ];
-
-    const placeholders = [
+    // 預設 6 個卡片的網址（包含 YouTube 影片、Windy 氣象地圖、氣象署雷達圖）
+    const defaultURLs = [
         "https://www.youtube.com/watch?v=1ksmiy6EsDo",
-        "https://www.youtube.com/watch?v=iCetfeKzJFs",
-        "https://www.youtube.com/watch?v=_k-5U7IeK8g",
+        "https://www.windy.com",
+        "https://www.cwa.gov.tw/V8/C/W/OBS_Radar.html",
         "https://www.youtube.com/watch?v=YMRVk4EnBXk",
         "https://www.youtube.com/watch?v=VM18f-IIUTw",
         "https://www.youtube.com/watch?v=5TklUbUBZss"
     ];
 
-    // 1. 初始化產生影片框與網址列
+    // 1. 初始化產生影片/網頁框與網址列
     for (let i = 0; i < videoCount; i++) {
-        // 建立影片卡片 (包覆網址列與影片框)
         const card = document.createElement('div');
         card.className = 'video-card';
         card.id = `card-${i}`;
         card.style.width = '600px'; 
 
-        // 建立專屬網址輸入框
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'card-header';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'url-in-card';
-        input.placeholder = `貼上影片 ${i + 1} 網址... 預設: ${placeholders[i]}`;
+        input.value = defaultURLs[i];
+        input.placeholder = `貼上 YouTube 或 HTTPS 網址 (如 https://...)`;
+
+        const initialEmbedURL = formatEmbedURL(defaultURLs[i]);
+
+        const openBtn = document.createElement('a');
+        openBtn.className = 'open-link-btn';
+        openBtn.id = `open-btn-${i}`;
+        openBtn.href = defaultURLs[i];
+        openBtn.target = '_blank';
+        openBtn.title = '在新分頁開啟網站';
+        openBtn.innerText = '開啟 ↗';
+
         input.onchange = function() {
             changeVid(i, this.value);
         };
 
-        // 建立影片容器
+        cardHeader.appendChild(input);
+        cardHeader.appendChild(openBtn);
+
         const container = document.createElement('div');
         container.className = 'video-container';
         container.id = `box-${i}`;
-        container.style.height = '340px';
-        container.innerHTML = `<iframe id="player-${i}" src="https://www.youtube.com/embed/${defaultIDs[i]}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        container.style.height = '338px';
+        container.innerHTML = `<iframe id="player-${i}" src="${initialEmbedURL}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
 
-        card.appendChild(input);
+        card.appendChild(cardHeader);
         card.appendChild(container);
         grid.appendChild(card);
     }
@@ -253,7 +283,7 @@
         }
     }
 
-    // 3. 使用 Regex 解析 YouTube 網址
+    // 3. 解析 YouTube 影片 ID
     function extractVideoID(url) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
@@ -265,17 +295,44 @@
         }
     }
 
-    // 4. 手動更換影片功能
+    // 4. 智慧網址解析與 Embed 轉換器
+    function formatEmbedURL(url) {
+        if (!url) return '';
+        url = url.trim();
+
+        // 4.1 YouTube 網址轉換
+        const ytID = extractVideoID(url);
+        if (ytID) {
+            return `https://www.youtube.com/embed/${ytID}`;
+        }
+
+        // 4.2 Windy 網址自動轉換 (使用 Windy 官方嵌入式動態地圖)
+        if (url.toLowerCase().includes('windy.com')) {
+            return 'https://embed.windy.com/embed2.html?lat=23.5&lon=121.0&detailMode=true&zoom=7&level=surface&overlay=wind&product=ecmwf';
+        }
+
+        // 4.3 一般 HTTPS 網址自動補全協定頭
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+        }
+
+        return url;
+    }
+
+    // 5. 手動更換網頁/影片功能
     function changeVid(index, url) {
         if (!url) return; 
         
-        const videoId = extractVideoID(url);
+        const targetSrc = formatEmbedURL(url);
 
-        if (videoId) {
+        if (targetSrc) {
             const player = document.getElementById(`player-${index}`);
-            player.src = `https://www.youtube.com/embed/${videoId}`;
-        } else {
-            alert("無法解析此網址，請確認貼上的是正確的 YouTube 連結！");
+            player.src = targetSrc;
+
+            const openBtn = document.getElementById(`open-btn-${index}`);
+            if (openBtn) {
+                openBtn.href = url.startsWith('http') ? url : `https://${url}`;
+            }
         }
     }
 </script>
