@@ -16,7 +16,7 @@
 
         .control-panel {
             background: #2d2d2d;
-            padding: 20px;
+            padding: 3px;
             border-radius: 12px;
             margin-bottom: 30px;
             position: sticky;
@@ -61,7 +61,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 25px;
+            gap: 0px;
         }
 
         .video-card {
@@ -69,7 +69,7 @@
             flex-direction: column;
             gap: 10px;
             background: #252525;
-            padding: 12px;
+            padding: 2px;
             border-radius: 12px;
             border: 1px solid #333;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
@@ -119,13 +119,16 @@
         <div class="size-controls">
             <div class="input-group">
                 <label>同步寬度 (px):</label>
-                <input type="number" id="globalW" value="600" oninput="syncSize()">
+                <input type="number" id="globalW" value="600" oninput="onWidthChange()">
             </div>
             <div class="input-group">
                 <label>同步高度 (px):</label>
-                <input type="number" id="globalH" value="340" oninput="syncSize()">
+                <input type="number" id="globalH" value="338" oninput="onHeightChange()">
             </div>
-            <span style="font-size: 12px; color: #888;">(建議比例 16:9, 如 480x270 或 640x360)</span>
+            <div class="input-group">
+                <input type="checkbox" id="lock169" checked onchange="onLockChange()">
+                <label for="lock169" style="cursor: pointer; user-select: none;">🔒 鎖定 16:9 比例</label>
+            </div>
         </div>
     </div>
 
@@ -205,7 +208,36 @@
         grid.appendChild(card);
     }
 
-    // 2. 同步縮放尺寸
+    // 2. 16:9 比例連動計算與尺寸同步
+    function onWidthChange() {
+        const isLocked = document.getElementById('lock169').checked;
+        const wInput = document.getElementById('globalW');
+        const hInput = document.getElementById('globalH');
+        const w = parseFloat(wInput.value);
+        if (isLocked && !isNaN(w) && w > 0) {
+            hInput.value = Math.round(w * 9 / 16);
+        }
+        syncSize();
+    }
+
+    function onHeightChange() {
+        const isLocked = document.getElementById('lock169').checked;
+        const wInput = document.getElementById('globalW');
+        const hInput = document.getElementById('globalH');
+        const h = parseFloat(hInput.value);
+        if (isLocked && !isNaN(h) && h > 0) {
+            wInput.value = Math.round(h * 16 / 9);
+        }
+        syncSize();
+    }
+
+    function onLockChange() {
+        const isLocked = document.getElementById('lock169').checked;
+        if (isLocked) {
+            onWidthChange();
+        }
+    }
+
     function syncSize() {
         const w = document.getElementById('globalW').value;
         const h = document.getElementById('globalH').value;
