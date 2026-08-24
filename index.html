@@ -133,6 +133,158 @@
         }
 
         iframe { width: 100%; height: 100%; border: none; }
+
+        .btn-backup {
+            background: #383838;
+            border: 1px solid #555;
+            color: #ddd;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-backup:hover {
+            background: #ff0000;
+            color: white;
+            border-color: #ff0000;
+        }
+
+        /* 彈窗樣式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.82);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            background: #242424;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 22px;
+            width: 380px;
+            max-width: 90vw;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transform: scale(0.95);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+        .modal-box h3 {
+            margin: 0;
+            color: #ff3333;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal-box p {
+            margin: 0;
+            font-size: 12px;
+            color: #bbb;
+            line-height: 1.5;
+        }
+        .modal-input {
+            background: #151515;
+            border: 1px solid #444;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .modal-input:focus {
+            border-color: #ff3333;
+            background: #1c1c1c;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .btn-primary {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 7px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover {
+            background: #cc0000;
+        }
+        .btn-secondary {
+            background: #444;
+            color: #ddd;
+            border: none;
+            padding: 7px 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover {
+            background: #555;
+            color: white;
+        }
+        .error-msg {
+            color: #ff4d4d;
+            font-size: 12px;
+            background: rgba(255, 0, 0, 0.12);
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            display: none;
+        }
+        .toast {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: #252525;
+            color: white;
+            border-left: 4px solid #ff0000;
+            padding: 12px 18px;
+            border-radius: 8px;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.6);
+            font-size: 13px;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -153,10 +305,48 @@
                 <input type="checkbox" id="lock169" checked onchange="onLockChange()">
                 <label for="lock169" style="cursor: pointer; user-select: none;">🔒 鎖定 16:9 比例</label>
             </div>
+            <div class="input-group">
+                <input type="checkbox" id="saveUrls" onchange="onSaveUrlsToggle()">
+                <label for="saveUrls" style="cursor: pointer; user-select: none;">🔐 儲存網址 (AES-256 加密)</label>
+            </div>
+            <div class="input-group">
+                <button class="btn-backup" onclick="exportEncryptedBackup()" title="匯出已加密的 JSON 備份檔">📤 匯出備份</button>
+                <button class="btn-backup" onclick="triggerImportBackup()" title="匯入已加密的 JSON 備份檔">📥 匯入備份</button>
+                <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(event)">
+            </div>
         </div>
     </div>
 
     <div class="video-grid" id="mainGrid">
+    </div>
+
+    <!-- 設定加密密碼彈窗 -->
+    <div class="modal-overlay" id="setPasswordModal">
+        <div class="modal-box">
+            <h3>🔒 設定高強度加密密碼</h3>
+            <p>將使用 <strong>AES-256-GCM + PBKDF2 (100,000次雜湊)</strong> 加密您的網址清單。請設定解鎖密碼：</p>
+            <input type="password" id="setPwdInput" class="modal-input" placeholder="請輸入加密密碼 (至少 4 個字元)" onkeydown="if(event.key==='Enter')confirmSetPassword()">
+            <input type="password" id="confirmPwdInput" class="modal-input" placeholder="請再次輸入密碼以確認" onkeydown="if(event.key==='Enter')confirmSetPassword()">
+            <div id="setPwdError" class="error-msg"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="cancelSetPassword()">取消</button>
+                <button class="btn-primary" onclick="confirmSetPassword()">確認加密儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 輸入解鎖密碼彈窗 -->
+    <div class="modal-overlay" id="unlockModal">
+        <div class="modal-box">
+            <h3>🔓 解鎖已加密的網址清單</h3>
+            <p id="unlockDesc">偵測到本地儲存了高強度加密的網址資料，請輸入您的密碼以解密載入：</p>
+            <input type="password" id="unlockPwdInput" class="modal-input" placeholder="請輸入解密密碼" onkeydown="if(event.key==='Enter')confirmUnlock()">
+            <div id="unlockPwdError" class="error-msg"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="cancelUnlock()">使用預設網址</button>
+                <button class="btn-primary" onclick="confirmUnlock()">解密並載入</button>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -200,7 +390,18 @@
         "https://www.youtube.com/watch?v=1ksmiy6EsDo"
     ];
 
-    // 1. 初始化產生影片/網頁框與網址列
+    let sessionPassword = null;
+    let pendingImportPkg = null;
+
+    // 檢查是否有儲存的加密設定
+    const hasEncryptedStorage = localStorage.getItem('save_urls_encrypted') === 'true' && !!localStorage.getItem('encrypted_urls');
+
+    const saveUrlsCheckbox = document.getElementById('saveUrls');
+    if (saveUrlsCheckbox) {
+        saveUrlsCheckbox.checked = hasEncryptedStorage;
+    }
+
+    // 1. 初始化產生影片/網頁框與網址列（預設使用 defaultURLs）
     for (let i = 0; i < videoCount; i++) {
         const card = document.createElement('div');
         card.className = 'video-card';
@@ -213,6 +414,7 @@
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'url-in-card';
+        input.id = `url-input-${i}`;
         input.value = defaultURLs[i];
         input.placeholder = `貼上 YouTube 或 HTTPS 網址 (如 https://...)`;
 
@@ -221,13 +423,16 @@
         const openBtn = document.createElement('a');
         openBtn.className = 'open-link-btn';
         openBtn.id = `open-btn-${i}`;
-        openBtn.href = defaultURLs[i];
+        openBtn.href = defaultURLs[i] ? (defaultURLs[i].startsWith('http') ? defaultURLs[i] : `https://${defaultURLs[i]}`) : '#';
         openBtn.target = '_blank';
         openBtn.title = '在新分頁開啟網站';
         openBtn.innerText = '開啟 ↗';
 
         input.onchange = function() {
             changeVid(i, this.value);
+            if (document.getElementById('saveUrls').checked && sessionPassword) {
+                saveCurrentURLsEncrypted();
+            }
         };
 
         cardHeader.appendChild(input);
@@ -242,6 +447,13 @@
         card.appendChild(cardHeader);
         card.appendChild(container);
         grid.appendChild(card);
+    }
+
+    // 若本地有已加密的資料，頁面啟動時自動彈出解鎖視窗
+    if (hasEncryptedStorage) {
+        setTimeout(() => {
+            openUnlockModal();
+        }, 150);
     }
 
     // 2. 16:9 比例連動計算與尺寸同步
@@ -333,13 +545,308 @@
 
         if (targetSrc) {
             const player = document.getElementById(`player-${index}`);
-            player.src = targetSrc;
+            if (player) {
+                player.src = targetSrc;
+            }
 
             const openBtn = document.getElementById(`open-btn-${index}`);
             if (openBtn) {
                 openBtn.href = url.startsWith('http') ? url : `https://${url}`;
             }
         }
+    }
+
+    // 6. 套用網址清單到全部 12 個卡片
+    function applyURLs(urls) {
+        for (let i = 0; i < videoCount; i++) {
+            const val = (urls && typeof urls[i] === 'string') ? urls[i] : (defaultURLs[i] || '');
+            const input = document.getElementById(`url-input-${i}`);
+            if (input) {
+                input.value = val;
+            }
+            changeVid(i, val);
+        }
+    }
+
+    // ==========================================
+    // 🔐 Web Crypto API 高強度加密核心模組 (AES-256-GCM + PBKDF2)
+    // ==========================================
+
+    function bufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    function base64ToBuffer(base64) {
+        const binary = window.atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    }
+
+    async function deriveKey(password, salt) {
+        const enc = new TextEncoder();
+        const keyMaterial = await window.crypto.subtle.importKey(
+            "raw",
+            enc.encode(password),
+            { name: "PBKDF2" },
+            false,
+            ["deriveKey"]
+        );
+        return await window.crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt: salt,
+                iterations: 100000,
+                hash: "SHA-256"
+            },
+            keyMaterial,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+    }
+
+    async function encryptData(plainText, password) {
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+        const encoded = new TextEncoder().encode(plainText);
+        const ciphertext = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encoded
+        );
+        return {
+            version: 1,
+            algo: "AES-256-GCM",
+            kdf: "PBKDF2-SHA256-100K",
+            salt: bufferToBase64(salt),
+            iv: bufferToBase64(iv),
+            ciphertext: bufferToBase64(ciphertext)
+        };
+    }
+
+    async function decryptData(pkg, password) {
+        const salt = base64ToBuffer(pkg.salt);
+        const iv = base64ToBuffer(pkg.iv);
+        const ciphertext = base64ToBuffer(pkg.ciphertext);
+        const key = await deriveKey(password, salt);
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            ciphertext
+        );
+        return new TextDecoder().decode(decrypted);
+    }
+
+    // 儲存當前所有網址列（高強度加密）
+    async function saveCurrentURLsEncrypted() {
+        if (!sessionPassword) return;
+        try {
+            const urlInputs = document.querySelectorAll('.url-in-card');
+            const urls = Array.from(urlInputs).map(input => input.value);
+            const encryptedPkg = await encryptData(JSON.stringify(urls), sessionPassword);
+            localStorage.setItem('encrypted_urls', JSON.stringify(encryptedPkg));
+            localStorage.setItem('save_urls_encrypted', 'true');
+            // 清除舊版未加密的明文儲存以確保安全
+            localStorage.removeItem('saved_urls');
+        } catch (e) {
+            console.error('加密儲存失敗:', e);
+            showToast('⚠️ 加密儲存失敗：' + e.message);
+        }
+    }
+
+    // 勾選方塊切換事件
+    async function onSaveUrlsToggle() {
+        const isChecked = document.getElementById('saveUrls').checked;
+        if (isChecked) {
+            if (!sessionPassword) {
+                openSetPasswordModal();
+            } else {
+                await saveCurrentURLsEncrypted();
+                showToast('🔒 網址已加密儲存');
+            }
+        } else {
+            if (confirm('確定要關閉加密儲存並清除本機已保存的加密網址嗎？')) {
+                localStorage.removeItem('encrypted_urls');
+                localStorage.setItem('save_urls_encrypted', 'false');
+                sessionPassword = null;
+                showToast('🗑️ 已清除本機加密網址紀錄');
+            } else {
+                document.getElementById('saveUrls').checked = true;
+            }
+        }
+    }
+
+    // Toast 提示通知
+    function showToast(msg) {
+        let toast = document.getElementById('toastNotification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.className = 'toast';
+            document.body.appendChild(toast);
+        }
+        toast.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    // 彈窗控制：設定密碼
+    function openSetPasswordModal() {
+        document.getElementById('setPwdInput').value = '';
+        document.getElementById('confirmPwdInput').value = '';
+        document.getElementById('setPwdError').style.display = 'none';
+        document.getElementById('setPasswordModal').classList.add('active');
+        setTimeout(() => document.getElementById('setPwdInput').focus(), 100);
+    }
+
+    function closeSetPasswordModal() {
+        document.getElementById('setPasswordModal').classList.remove('active');
+    }
+
+    function cancelSetPassword() {
+        closeSetPasswordModal();
+        if (!sessionPassword) {
+            document.getElementById('saveUrls').checked = false;
+        }
+    }
+
+    async function confirmSetPassword() {
+        const p1 = document.getElementById('setPwdInput').value;
+        const p2 = document.getElementById('confirmPwdInput').value;
+        const err = document.getElementById('setPwdError');
+
+        if (!p1 || p1.length < 4) {
+            err.innerText = '⚠️ 密碼長度請至少輸入 4 個字元！';
+            err.style.display = 'block';
+            return;
+        }
+        if (p1 !== p2) {
+            err.innerText = '⚠️ 兩次輸入的密碼不一致！';
+            err.style.display = 'block';
+            return;
+        }
+
+        sessionPassword = p1;
+        closeSetPasswordModal();
+        await saveCurrentURLsEncrypted();
+        showToast('🔒 網址清單已使用 AES-256 成功加密儲存！');
+    }
+
+    // 彈窗控制：解鎖密碼
+    function openUnlockModal() {
+        document.getElementById('unlockPwdInput').value = '';
+        document.getElementById('unlockPwdError').style.display = 'none';
+        document.getElementById('unlockModal').classList.add('active');
+        setTimeout(() => document.getElementById('unlockPwdInput').focus(), 100);
+    }
+
+    function closeUnlockModal() {
+        document.getElementById('unlockModal').classList.remove('active');
+        pendingImportPkg = null;
+    }
+
+    function cancelUnlock() {
+        closeUnlockModal();
+        showToast('ℹ️ 已使用預設網址載入');
+    }
+
+    async function confirmUnlock() {
+        const pwd = document.getElementById('unlockPwdInput').value;
+        const err = document.getElementById('unlockPwdError');
+
+        if (!pwd) {
+            err.innerText = '⚠️ 請輸入密碼！';
+            err.style.display = 'block';
+            return;
+        }
+
+        try {
+            let pkg;
+            if (pendingImportPkg) {
+                pkg = pendingImportPkg;
+            } else {
+                pkg = JSON.parse(localStorage.getItem('encrypted_urls'));
+            }
+
+            const decryptedJson = await decryptData(pkg, pwd);
+            const urls = JSON.parse(decryptedJson);
+
+            if (Array.isArray(urls)) {
+                sessionPassword = pwd;
+                applyURLs(urls);
+                if (pendingImportPkg) {
+                    localStorage.setItem('encrypted_urls', JSON.stringify(pendingImportPkg));
+                    localStorage.setItem('save_urls_encrypted', 'true');
+                    document.getElementById('saveUrls').checked = true;
+                }
+                closeUnlockModal();
+                showToast('🔓 成功解密並載入網址！');
+            } else {
+                throw new Error('解密後的格式不正確');
+            }
+        } catch (e) {
+            console.error('解密失敗:', e);
+            err.innerText = '❌ 密碼錯誤或加密資料已損毀，請重試！';
+            err.style.display = 'block';
+        }
+    }
+
+    // 備份匯出與匯入功能
+    function exportEncryptedBackup() {
+        const raw = localStorage.getItem('encrypted_urls');
+        if (!raw) {
+            alert('目前本機尚未有已儲存的加密網址，請先勾選「儲存網址 (AES-256 加密)」並設定密碼！');
+            return;
+        }
+        const blob = new Blob([raw], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `youtuber-controller-backup-${new Date().toISOString().slice(0,10)}.enc.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('📤 已下載高強度加密備份檔！');
+    }
+
+    function triggerImportBackup() {
+        document.getElementById('importFileInput').click();
+    }
+
+    function handleImportFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const pkg = JSON.parse(e.target.result);
+                if (pkg && pkg.ciphertext && pkg.salt && pkg.iv) {
+                    pendingImportPkg = pkg;
+                    openUnlockModal();
+                    document.getElementById('unlockPwdError').style.display = 'none';
+                    showToast('📁 已載入加密檔案，請輸入密碼以解密');
+                } else {
+                    alert('⚠️ 檔案格式錯誤：並非有效的高強度加密備份檔！');
+                }
+            } catch (err) {
+                alert('⚠️ 讀取檔案失敗：' + err.message);
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
     }
 </script>
 </body>
